@@ -13,6 +13,8 @@ import java.util.List;
  * RawJobRecord (not yet cleaned or validated — that's JobTransformer's job).
  *
  * Expected columns: title,company,location,description,required_skills,salary_range,source_url
+ * A small hand-rolled parser is used (no external CSV library needed) —
+ * it supports quoted fields containing commas.
  */
 public class CsvExtractor {
 
@@ -30,7 +32,7 @@ public class CsvExtractor {
                 }
                 if (line.isBlank()) continue;
 
-                String[] fields = line.split(",");
+                String[] fields = parseCsvLine(line);
                 if (fields.length < 7) {
                     continue; // skip malformed rows rather than failing the whole batch
                 }
@@ -43,5 +45,25 @@ public class CsvExtractor {
         }
         return records;
     }
-}
 
+    /** Minimal CSV line parser supporting double-quoted fields containing commas. */
+    private String[] parseCsvLine(String line) {
+        List<String> fields = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        boolean inQuotes = false;
+
+        for (int i = 0; i < line.length(); i++) {
+            char c = line.charAt(i);
+            if (c == '"') {
+                inQuotes = !inQuotes;
+            } else if (c == ',' && !inQuotes) {
+                fields.add(current.toString());
+                current.setLength(0);
+            } else {
+                current.append(c);
+            }
+        }
+        fields.add(current.toString());
+        return fields.toArray(new String[0]);
+    }
+}
